@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission
+        android:name="android.permission.POST_NOTIFICATIONS"
+        tools:targetApi="33" />
+
+
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.TurismoExplorer">
+
+        <!-- Service do FCM -->
+        <service
+            android:name=".push.MyFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Receiver do Geofencing -->
+        <receiver
+            android:name=".geo.GeofenceBroadcastReceiver"
+            android:exported="false" />
+
+
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${GOOGLE_PLACES_API_KEY}" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.TurismoExplorer">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+
+        <!-- Lista de locais populares (precisa estar declarada) -->
+        <activity
+            android:name=".popular.PopularPlacesActivity"
+            android:exported="true"
+            android:theme="@style/Theme.TurismoExplorer" />
+
+        <!-- Tela de Mapa -->
+        <activity
+            android:name=".map.PlacesMapActivity"
+            android:exported="true"
+            android:theme="@style/Theme.TurismoExplorer" />
+
+        <!-- Tela de Favoritos -->
+        <activity
+            android:name=".favorites.FavoritesActivity"
+            android:exported="true"
+            android:theme="@style/Theme.TurismoExplorer" />
+
+        <!-- Tela de Notificação -->
+        <activity
+            android:name=".notifications.NotificationsActivity"
+            android:exported="true"
+            android:theme="@style/Theme.TurismoExplorer" />
+
+
+    </application>
+</manifest>

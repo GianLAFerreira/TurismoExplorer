@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tema da aplicação (AppCompat-based via Material3) -->
+    <style name="Theme.TurismoExplorer" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Personalizações opcionais -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+</resources>
