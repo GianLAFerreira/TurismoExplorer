@@ -1,9 +1,9 @@
-// Kotlin
 package com.example.turismoexplorer.popular
 
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
-import android.widget.EditText
+import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.viewModels
@@ -13,39 +13,66 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.turismoexplorer.R
+import com.example.turismoexplorer.data.favorites.FavoritesRepository
+import com.example.turismoexplorer.domain.Place
 import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.textfield.TextInputEditText
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import android.view.View
-import android.widget.ProgressBar
-
-
 
 class PopularPlacesActivity : ComponentActivity() {
 
     private val viewModel: PopularPlacesViewModel by viewModels()
-    private val adapter = PlacesAdapter()
+
+    // Repositório e estado dos favoritos
+    private lateinit var favoritesRepo: FavoritesRepository
+    private val favoriteIds = MutableStateFlow<Set<String>>(emptySet())
+
+    // Adapter com callbacks de favorito
+    private val adapter by lazy {
+        PlacesAdapter(
+            isFavorite = { id -> favoriteIds.value.contains(id) },
+            onFavoriteClick = { place -> toggleFavorite(place) }
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_popular_places)
 
-        val toolbar = findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.topAppBar)
-        toolbar.setNavigationOnClickListener { finish() }
+        favoritesRepo = FavoritesRepository(this)
 
-        val cityInput = findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.cityInput)
+        val toolbar = findViewById<MaterialToolbar>(R.id.topAppBar)
+        val cityInput = findViewById<TextInputEditText>(R.id.cityInput)
         val loadButton = findViewById<Button>(R.id.loadButton)
         val progressBar = findViewById<ProgressBar>(R.id.progressBar)
         val recycler = findViewById<RecyclerView>(R.id.placesRecycler)
+
+        toolbar.setNavigationOnClickListener { finish() }
 
         recycler.layoutManager = LinearLayoutManager(this)
         recycler.adapter = adapter
 
         loadButton.setOnClickListener {
             val city = cityInput.text?.toString()?.trim().orEmpty()
-            if (city.isNotEmpty()) viewModel.load(city)
+            if (city.isNotEmpty()) {
+                viewModel.load(city)
+            } else {
+                Toast.makeText(this, "Informe uma cidade", Toast.LENGTH_SHORT).show()
+            }
         }
 
+        // Observa mudanças nos favoritos e atualiza ícones das estrelas
+        lifecycleScope.launch {
+            favoritesRepo.favoriteIds().collectLatest { ids ->
+                favoriteIds.value = ids
+                // Atualiza apenas o estado visual das estrelas
+                adapter.notifyDataSetChanged()
+            }
+        }
+
+        // Observa estado da tela e atualiza lista/loading
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collectLatest { state ->
@@ -74,5 +101,11 @@ class PopularPlacesActivity : ComponentActivity() {
             }
         }
     }
-}
 
+    private fun toggleFavorite(place: Place) {
+        lifecycleScope.launch {
+            favoritesRepo.toggle(place)
+            // O Flow de favoriteIds reemitirá e os ícones serão atualizados via notifyDataSetChanged()
+        }
+    }
+}

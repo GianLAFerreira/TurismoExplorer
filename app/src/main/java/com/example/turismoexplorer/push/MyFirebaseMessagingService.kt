@@ -1,5 +1,6 @@
 package com.example.turismoexplorer.push
 
+import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.example.turismoexplorer.notify.NotificationUtils
@@ -7,6 +8,7 @@ import com.example.turismoexplorer.notify.NotificationUtils
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
+        Log.d("FCM", "onMessageReceived from=${message.from} data=${message.data}")
         val data = message.data
         val type = data["type"] ?: return
 
@@ -18,7 +20,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             NotificationUtils.notifyNearby(
                 context = this,
                 notificationId = (System.currentTimeMillis() % Int.MAX_VALUE).toInt(),
-                title = name,
+                title = "Você está próximo do ponto turístico $name",
                 message = "Toque para abrir no mapa",
                 targetLat = lat,
                 targetLng = lng
@@ -27,6 +29,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     override fun onNewToken(token: String) {
-        // Envie o token para seu backend se necessário
+        Log.d("FCM", "Novo token: $token")
+        // Envie esse token ao seu backend, se necessário.
     }
 }

@@ -9,7 +9,9 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import com.example.turismoexplorer.domain.Place
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.location.Geofence
+import com.google.android.gms.location.GeofenceStatusCodes
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
@@ -27,7 +29,6 @@ class GeofencingHelper(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
     }
-
 
     fun clearAll(onDone: (() -> Unit)? = null) {
         if (!hasPermission()) {
@@ -48,28 +49,30 @@ class GeofencingHelper(private val context: Context) {
     }
 
     private fun hasPermission(): Boolean {
-        val fine = ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        val coarse = ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        return fine || coarse
+        val fineGranted = ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val coarseGranted = ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        Log.d("GeofencingHelper", "Permissões: FINE=$fineGranted COARSE=$coarseGranted")
+        return fineGranted
     }
 
     fun registerGeofences(
         places: List<Place>,
-        radiusMeters: Float = 400f,            // raio um pouco maior para facilitar testes
-        loiteringDelayMs: Int = 10_000         // 10s para DWELL
+        radiusMeters: Float = 500f,
+        loiteringDelayMs: Int = 10_000
     ) {
         if (!hasPermission()) {
-            Log.w("GeofencingHelper", "Sem permissão de localização para registrar geofences")
+            Log.w("GeofencingHelper", "Sem permissão (ACCESS_FINE_LOCATION) para registrar geofences")
+            Toast.makeText(context, "Permissão de localização precisa é necessária", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val geofences = places.mapNotNull { p ->
-            val lat = p.lat ?: return@mapNotNull null
-            val lng = p.lng ?: return@mapNotNull null
-            val requestId = "${p.id}::${p.name}" // carrega ID e Nome no requestId
+        val safePlaces = places.filter { it.lat != null && it.lng != null }.take(95)
+
+        val geofences = safePlaces.map { p ->
+            val requestId = "${p.id}::${p.name}"
             Geofence.Builder()
                 .setRequestId(requestId)
-                .setCircularRegion(lat, lng, radiusMeters)
+                .setCircularRegion(p.lat!!, p.lng!!, radiusMeters)
                 .setTransitionTypes(
                     Geofence.GEOFENCE_TRANSITION_ENTER or
                             Geofence.GEOFENCE_TRANSITION_DWELL or
@@ -82,6 +85,7 @@ class GeofencingHelper(private val context: Context) {
 
         if (geofences.isEmpty()) {
             Log.w("GeofencingHelper", "Nenhuma geofence válida para registrar")
+            Toast.makeText(context, "Nenhum ponto com coordenadas válidas", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -90,7 +94,6 @@ class GeofencingHelper(private val context: Context) {
             .addGeofences(geofences)
             .build()
 
-        // Limpa anteriores e registra de novo (evita ruídos)
         clearAll {
             try {
                 client.addGeofences(request, geofencePendingIntent())
@@ -99,8 +102,10 @@ class GeofencingHelper(private val context: Context) {
                         Toast.makeText(context, "Geofences registradas (${geofences.size})", Toast.LENGTH_SHORT).show()
                     }
                     .addOnFailureListener { e ->
-                        Log.e("GeofencingHelper", "Falha ao registrar geofences: ${e.message}", e)
-                        Toast.makeText(context, "Falha ao registrar geofences", Toast.LENGTH_SHORT).show()
+                        val code = (e as? ApiException)?.statusCode
+                        val codeMsg = if (code != null) GeofenceStatusCodes.getStatusCodeString(code) else "UNKNOWN"
+                        Log.e("GeofencingHelper", "Falha ao registrar geofences: code=$code ($codeMsg)", e)
+                        Toast.makeText(context, "Falha ao registrar geofences ($codeMsg)", Toast.LENGTH_SHORT).show()
                     }
             } catch (se: SecurityException) {
                 Log.w("GeofencingHelper", "SecurityException ao registrar geofences (sem permissão?)", se)

@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 
 
+
 class MainActivity : ComponentActivity() {
 
     private val requestNotifPermission = registerForActivityResult(
